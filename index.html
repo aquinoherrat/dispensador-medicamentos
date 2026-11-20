@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Servicio de Dispensador de Medicamentos — Prototipo Web</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="container header-inner">
+      <div class="brand-group">
+        <div class="brand-icon" aria-hidden="true">💊</div>
+        <div>
+          <h1 class="app-title">Servicio de dispensador de medicamentos</h1>
+          <p class="app-subtitle">Prototipo estudiantil · Datos ficticios · Dispensación simulada</p>
+        </div>
+      </div>
+      <div class="demo-badge" title="Cuenta activa de demostración">
+        <span class="dot"></span> Cuenta: <strong>demo01</strong>
+      </div>
+    </div>
+  </header>
+
+  <nav class="app-nav" aria-label="Navegación principal">
+    <div class="container nav-inner">
+      <button class="nav-btn active" data-view="inicio">Inicio</button>
+      <button class="nav-btn" data-view="medicamentos">Medicamentos</button>
+      <button class="nav-btn" data-view="horarios">Horarios</button>
+      <button class="nav-btn" data-view="simulador">Simulador</button>
+      <button class="nav-btn" data-view="historial">Historial</button>
+      <button class="nav-btn" data-view="ayuda">Ayuda</button>
+    </div>
+  </nav>
+
+  <main class="container main-content">
+    <div id="toast-banner" class="toast-banner hidden" role="status" aria-live="polite"></div>
+
+    <!-- VISTA 1: INICIO -->
+    <section id="view-inicio" class="view-section active">
+      <div class="card">
+        <div class="card-header-flex">
+          <div>
+            <h2 class="section-title">Control de entregas simuladas</h2>
+            <p class="section-desc">Registra el inventario, programa un horario y comprueba el resultado de la entrega en el historial.</p>
+          </div>
+          <button class="btn btn-primary" onclick="switchView('simulador')">Abrir el simulador →</button>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Medicamentos registrados</span>
+            <span class="kpi-value" id="kpi-meds">3</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Horarios activos</span>
+            <span class="kpi-value" id="kpi-schedules">3</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Eventos registrados</span>
+            <span class="kpi-value" id="kpi-events">0</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Reloj simulado actual</span>
+            <span class="kpi-value kpi-clock" id="kpi-clock">29/11/2026 07:59</span>
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <h3 class="sub-title">Alertas de inventario</h3>
+          <div id="alerts-container"></div>
+        </div>
+
+        <div class="sub-block">
+          <h3 class="sub-title">Próximas tomas programadas (Activas)</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Hora</th>
+                  <th>Código</th>
+                  <th>Medicamento</th>
+                  <th>Dosis</th>
+                  <th>Existencias</th>
+                </tr>
+              </thead>
+              <tbody id="inicio-schedules-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 2: MEDICAMENTOS -->
+    <section id="view-medicamentos" class="view-section">
+      <div class="card">
+        <h2 class="section-title">Medicamentos</h2>
+        <p class="section-desc">Las cantidades corresponden al inventario de prueba (números enteros ≥ 0).</p>
+
+        <form id="med-form" class="form-grid-4" novalidate>
+          <input type="hidden" id="med-edit-id" value="" />
+          <div class="form-group">
+            <label for="med-codigo">Código</label>
+            <input type="text" id="med-codigo" placeholder="Ej. M04" required />
+          </div>
+          <div class="form-group">
+            <label for="med-nombre">Nombre</label>
+            <input type="text" id="med-nombre" placeholder="Ej. Medicamento Delta" required />
+          </div>
+          <div class="form-group">
+            <label for="med-existencias">Existencias</label>
+            <input type="number" id="med-existencias" min="0" step="1" placeholder="Ej. 10" required />
+          </div>
+          <div class="form-group">
+            <label for="med-minimo">Mínimo</label>
+            <input type="number" id="med-minimo" min="0" step="1" placeholder="Ej. 3" required />
+          </div>
+          <div class="form-actions-row">
+            <button type="submit" class="btn btn-primary" id="btn-save-med">Guardar medicamento</button>
+            <button type="button" class="btn btn-secondary hidden" id="btn-cancel-med" onclick="resetMedForm()">Cancelar edición</button>
+          </div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Existencias</th>
+                <th>Mínimo</th>
+                <th>Estado Stock</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="meds-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 3: HORARIOS -->
+    <section id="view-horarios" class="view-section">
+      <div class="card">
+        <h2 class="section-title">Horarios</h2>
+        <p class="section-desc">Cada horario activo se repite diariamente en el reloj de prueba. No se permiten horas duplicadas para el mismo medicamento.</p>
+
+        <form id="sched-form" class="form-grid-3" novalidate>
+          <div class="form-group">
+            <label for="sched-med">Medicamento</label>
+            <select id="sched-med" required></select>
+          </div>
+          <div class="form-group">
+            <label for="sched-hora">Hora (HH:MM)</label>
+            <input type="time" id="sched-hora" required />
+          </div>
+          <div class="form-group">
+            <label for="sched-unidades">Unidades</label>
+            <input type="number" id="sched-unidades" min="1" step="1" placeholder="Ej. 1" required />
+          </div>
+          <div class="form-actions-row">
+            <button type="submit" class="btn btn-primary">Guardar horario</button>
+          </div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Medicamento</th>
+                <th>Hora</th>
+                <th>Unidades</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="scheds-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 4: SIMULADOR -->
+    <section id="view-simulador" class="view-section">
+      <div class="card">
+        <h2 class="section-title">Simulador de dispensación</h2>
+        <p class="section-desc">Adelanta el reloj ficticio para visualizar los eventos programados cuya hora ya llegó. Cada evento se procesa una sola vez por fecha.</p>
+
+        <form id="clock-form" class="form-grid-2" novalidate>
+          <div class="form-group">
+            <label for="sim-fecha">Fecha simulada</label>
+            <input type="date" id="sim-fecha" required />
+          </div>
+          <div class="form-group">
+            <label for="sim-hora">Hora simulada</label>
+            <input type="time" id="sim-hora" required />
+          </div>
+          <div class="form-actions-row">
+            <button type="submit" class="btn btn-primary">Actualizar reloj</button>
+            <button type="button" class="btn btn-outline" onclick="quickSetClock('2026-11-29', '13:00')">Fijar 29/11/2026 13:00</button>
+            <button type="button" class="btn btn-outline" onclick="quickSetClock('2026-11-29', '20:00')">Fijar 29/11/2026 20:00</button>
+          </div>
+        </form>
+
+        <div class="sub-block">
+          <h3 class="sub-title">Eventos disponibles según el reloj (<span id="sim-clock-label">29/11/2026 07:59</span>)</h3>
+          <div id="sim-events-container"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 5: HISTORIAL -->
+    <section id="view-historial" class="view-section">
+      <div class="card">
+        <div class="card-header-flex">
+          <div>
+            <h2 class="section-title">Historial de dispensaciones</h2>
+            <p class="section-desc">Bitácora persistente de entregas simuladas y fallos registrados bajo la cuenta <strong>demo01</strong>.</p>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Medicamento</th>
+                <th>Unidades</th>
+                <th>Resultado</th>
+                <th>Motivo / Observación</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 6: AYUDA -->
+    <section id="view-ayuda" class="view-section">
+      <div class="card">
+        <h2 class="section-title">Guía de demostración y pruebas de aceptación (A1 – A6)</h2>
+        <p class="section-desc">Sigue estos pasos para validar los criterios de aceptación definidos en el Acta de Constitución:</p>
+        <ol class="guide-list">
+          <li><strong>Inventario inicial (A1):</strong> Abre <em>Medicamentos</em> y verifica los fármacos <strong>Alfa (12 uds, mín. 3)</strong>, <strong>Beta (4 uds, mín. 3)</strong> y <strong>Gamma (8 uds, mín. 2)</strong>.</li>
+          <li><strong>Programación diaria (A1):</strong> En <em>Horarios</em>, comprueba las tomas activas a las <strong>08:00 (1 ud)</strong>, <strong>13:00 (1 ud)</strong> y <strong>20:00 (2 uds)</strong>.</li>
+          <li><strong>Reloj y entrega simulada (A3 / A5):</strong> En <em>Simulador</em>, selecciona <strong>29/11/2026</strong> a las <strong>13:00</strong>, haz clic en <em>Actualizar reloj</em> y ejecuta <strong>Simular entrega</strong> en <em>Medicamento Beta</em>. Sus existencias bajarán de 4 a 3 y se activará la alerta de stock mínimo.</li>
+          <li><strong>Bloqueo de duplicados (A4):</strong> Intenta repetir la entrega de <em>Beta</em> en la misma fecha; observarás que el evento ya figura como procesado y no descuenta existencias nuevamente.</li>
+          <li><strong>Simulación de fallo (A6):</strong> En <em>Medicamento Alfa</em> (08:00), pulsa <strong>Simular fallo</strong>. Se registrará como <code>FALLIDA</code> conservando sus 12 unidades intactas.</li>
+          <li><strong>Persistencia local (A2):</strong> Consulta <em>Historial</em>, cierra o recarga esta pestaña del navegador y comprueba que todos los registros permanecen guardados.</li>
+        </ol>
+
+        <div class="info-callout">
+          <strong>Nota técnica de arquitectura:</strong> Los cambios de esta demostración se almacenan localmente en el navegador (<code>localStorage</code>). El esquema relacional en SQLite (<code>dispensador_simulado.db</code>) diseñado en la Actividad 2 constituye el modelo de datos para integración con servicio local.
+        </div>
+
+        <div class="reset-box">
+          <button type="button" class="btn btn-danger" onclick="resetDemoData()">Restablecer los datos de ejemplo</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="container footer-inner">
+      <span>UNICARIBE · Proyecto de Software I · Cuenta <strong>demo01</strong></span>
+      <span>Prototipo Académico — Servicio de Dispensador de Medicamentos (2026)</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
